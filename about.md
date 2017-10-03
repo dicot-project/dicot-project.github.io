@@ -25,8 +25,7 @@ environment, and effort expended by administrators, developers and users to
 write tools around its REST API.
 
 There are a number of ways to provide interoperability between OpenStack and
-Kubernetes that have been outlined in a previous document. The two most
-interesting options will be outlined here in more detail
+Kubernetes, but this document will focus on just two options:
 
 ### Nova virt driver for KubeVirt
 
