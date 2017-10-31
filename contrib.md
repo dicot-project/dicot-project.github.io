@@ -60,7 +60,7 @@ control system, [hosted on github](https://github.com/dicot-project/). The
 primary repositories are:
 
 * [dicot-api](https://github.com/dicot-project/dicot-api) - The REST APIs to enable OpenStack compatible clients to use KubeVirt and Kubernetes
-* [dicot.github.io](https://github.com/dicot-project/dicot.github.io) - The source for this entire website
+* [dicot.github.io](https://github.com/dicot-project/dicot-project.github.io) - The source for this entire website
 
 ### Social media
 

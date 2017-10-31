@@ -2,7 +2,7 @@ Dicot website README
 ====================
 
 This repository provides the content behind the [Dicot project
-website](http://dicot.github.io).
+website](http://dicot-project.github.io).
 
 The site is using the Jekyll content publishing framework to allow the site to
 be served from github pages.
