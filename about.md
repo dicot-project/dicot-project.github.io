@@ -3,157 +3,56 @@ title: About Dicot
 layout: default
 ---
 
-## Background
+The [Kubernetes](https://kubernetes.io) project has established itself as the
+leading clustered platform for managing containers. While applications are
+increasingly being deployed in containers, not everyone is ready or willing to
+make the jump from deploying in virtual machines. Thus the
+[KubeVirt](https://kubevirt.github.io) project extends the Kubernetes APIs to
+facilitate management of virtual machines alongside containers. This enables
+cloud administrators to deploy and manage a single infrastructure platform for
+both containers and virtual machines. Tenant users will benefit from a converged
+API for managing workloads regardless of what they are running in. The
+convergance will facilitate interoperability between applications running in
+containers and virtual machines and smooth the migration path towards use of
+containers for all applications.
 
-The Kubernetes project has established itself as the leading clustered platform
-for managing containers. While applications are increasingly being deployed in
-containers, not everyone is ready or willing to make the jump from deploying
-in virtual machines. Thus the KubeVirt project extends the Kubernetes APIs to
-facilitate management of virtual machines alongside containers. This provides
-cloud administrators with converged infrastructure to deploy and manager, and
-tenant users with a converged API for managing workloads. The convergance will
-facilitate interoperability between applications running in containers and
-virtual machines and smooth the migration path towards containers.
+While the intended idea / goal is for tenant users to use the Kubernetes &
+KubeVirt APIs exclusively for managing containers & virtual machines, the real
+world may impose some constraints.
 
-While the long term goal is full convergence for cloud admins and tenant users
-between container and virtual machine management, in the short-to-medium term
-there is a clear need for interoperability with existing cloud management
-systems. In particular OpenStack is most widely used open source cloud based
-virtual machine management system that exists today. There are many projects
-in its ecosystem that continue to be interesting to users in a Kubernetes
-environment, and effort expended by administrators, developers and users to
-write tools around its REST API.
+* Organizations with existing deployments of OpenStack may wish to run both
+  OpenStack and Kubernetes/KubeVirt in parallel for a period of time.
+* Organizations with a local private cloud based on Kubernetes/KubeVirt may
+  wish to additionally make use of public clouds based on OpenStack, or
+  vica-verca.
 
-There are a number of ways to provide interoperability between OpenStack and
-Kubernetes, but this document will focus on just two options:
+The Dicot project aims to be a facilitating technology in those usage scenarios.
+At a high level it will assist tenant users in taking tools written to work with
+the OpenStack public REST APIs and reuse them to run virtual machine workloads
+on Kubernetes using KubeVirt.
 
-### Nova virt driver for KubeVirt
+It is important to note here that Dicot is not attempting to be the final or
+exclusive solution for tenants to use when managing VMs. The expectation is that
+tenants will use the Kubernetes / KubeVirt APIs for the majority of their
+day-to-day work, in order to see the advantages of having a converged API for
+containers and virtual machines. Dicot is a bridging technology to deal with
+the scenarios where some degree of interoperability with OpenStack is required,
+either as part of the infrastructure migration strategy or for hybrid public /
+private cloud usage across multiple vendors.
 
-Convergance: single hardware pool
+This constrains the scope of the project to become a more tractable problem.
+For example, there is no attempt to provide a seemless data upgrade path from a
+running OpenStack cloud to a Kubernetes/KubeVirt cloud. Those with existing
+usage of OpenStack would most likely run both solutions in parallel for a period
+of time, gradually using Kubernetes for new workloads, leaving legacy workloads
+on OpenStack. It also means that while Dicot aims to provide an OpenStack
+compatible REST API, it would not need to promise 100% semantic compatibility.
+The aim will be to provide strong enough compatibility to allow the majority of
+common usage to work, but some scenarios may require users to make adaptations
+to tools to take account of semantic differences or missing features.
 
-The minimal change approach would be to write a new Nova virt driver that
-talked to Kubernetes to accomplish its tasks. Such a driver would be similar
-to how the Nova VCenter driver works, where a single compute node in Nova is
-in fact an entire cluster of nodes. In such a model, Kubernetes is essentially
-only used for virtual machine lifecycle management, everything else in Nova and
-OpenStack continues as it exists today. In this model there is very little
-convergance between OpenStack and Kubernetes infrastructure. The cloud
-administrator has to manage all the OpenStack infrastruture that exists (REST
-API, message bus, mysql database, and OpenStack services), as well as the
-Kubernetes infrastructure (REST API, etcd, and Kubernetes services). The main
-benefit is that they only need a single pool of physical machines and each
-machine can dynamically be used for either virtual machines or containers.
-
-The challenges with making this approach successful revolve around how to deal
-with overlapping functionality. For example, Kubernetes has dynamic storage
-provisioning features that to some extent overlap with Cinder, and a network
-plugin concept that overlaps with Neutron. One option is to integrate those
-OpenStack services into the Kubernetes deployment. For example, Kubernetes
-could use Cinder as its storage provider. The problems with the such an approach
-are that it requires a greenfield Kubernetes deployment and makes OpenStack and
-Kubernetes co-dependant. This adds complexity for the administrator likely
-impacting on reliabilty. A goal of KubeVirt is that it can be deployed onto
-any pre-existing Kubernetes cluster, without requiring any changes to it.
-
-The less invasive approach is to strictly run the OpenStack components above
-Kubernetes, so the integration is strictly one way. This allows facilitates the
-deployment onto Kubernetes, but limits the scope for convergance. Storage and
-network concepts in the OpenStack API are invisible if using the Kubernetes
-API. Only the low level virtual machine configuration is visible via the
-Kubernetes APIs. Thus from the tenant user's POV there is essentially no
-convergance between virtual machine and container management APIs.
-
-In theory this minimal change approach could provide a more seemless upgrade
-path from existing OpenStack deployments using libvirt and KVM directly, to
-one using KubeVirt from Nova. In practice, promising a seemless uggrade path
-is fraught with difficulty. Achieving the exact same virtual machine hardware
-config between a system using libvirt directly vs KubeVirt would be challenging.
-The behaviour of the scheduling policies would be radically different, as there
-would be two levels of scheduling taking place. First the OpenStack scheduler
-would pick a compute "node", which actually represents an entire Kubernetes
-cluster. Second the Kubernetes scheduler would pick the real compute node to
-run the VM on. This would make it very challenging, if not impossible, to
-ensure that scheduling decisions encoded in flavour extra specs would have the
-same effect on the KubeVirt based system.
-
-Conceptually the picture would look like
-
-```
-                  /-> Cinder  -> RBD
- VM tenant user --+-> Neutron -> OpenVSwitch
-                  \-> Nova -----+
-                                |
-                                V
- Container tenant user ---> Kubernetes
-                                |
-                                +- KubeVirt VM driver
-                                +- Docker container driver
-```
-
-### OpenStack compatible API for KubeVirt
-
-Convergance: single hardware pool, single software stack, single API
-
-The more radical approach is to completely ignore the existing OpenStack
-codebase, and instead build a shim above the Kubernetes API that exposes an
-OpenStack compatible REST API service, for some subset of OpenStack projects.
-This mirrors the approach taken to provide Amazon EC2 API compatibility on
+Overall, Dicot can be considered to be broadly equivalent to the OpenStack
+project to build an [Amazon EC2 compatible
+API](https://github.com/openstack/ec2-api/blob/master/README.rst) on top of
 OpenStack.
 
-The cloud administrator gets highly converged infrastructure, since they now
-only have to deploy Kubernetes, KubeVirt and an API shim service. Usage of
-the rabbit message bus, mysql and countless openstack services is eliminated.
-While tenant users & app developers would continue with OpenStack API usage
-in the short-to-medium term, all the OpenStack API concepts would have a
-representation in the Kubernetes API. This enables them to incrementally switch
-over to using the Kubernetes API exclusively, thus gaining full convergance
-between virtual machines and containers.
-
-The decision of which OpenStack proejcts to rewrite in terms of API shims, vs
-which projects to simply run "as is" has a bearing on the design of the system.
-For example, if Cinder is to be run as-is, then the Nova API shim would have
-to be built using the Cinder client API for dealing with disk setup. If Cinder
-were to also be an API shim, however, the Nova API shim would be able to make
-assumptions about the storage backend of the Cinder shim and thus deal with
-the Kubernetes API objects exclusively for setting up disks. Even if there was
-a simple Cinder API shim and the Nova API shim worked in terms of Kubernetes
-APIs, it would not preclude usage of the real Cinder impl too, as Kubernetes
-has an internal driver that can utilize Cinder. Similar considerations apply
-for for Neutron networking API shims.
-
-The other core component is Keystone which provides authentication. It may be
-desirable to have a single Keystone API shim that maps onto Kubernetes APIs,
-but still have the other Nova/Cinder/Neutron API shims work in terms of the
-Keystone APIs. 
-
-Conceptually the picture would look like
-
-```
-                  /-> Cinder API shim  --+
- VM tenant user --+-> Neutron API shim --+
-                  \-> Nova API shim    --+
-                                         |
-                                         V
- Container tenant user ----------> Kubernetes
-                                      |
-                                      +- KubeVirt VM driver
-                                      +- Docker container driver
-```
-
-With the option to have a setup like
-
-
-                  /-> Cinder API shim  --+
- VM tenant user --+-> Neutron API shim --+
-                  \-> Nova API shim    --+
-                                         |
-                                         V
- Container tenant user ----------> Kubernetes
-                                      |
-                                      +- KubeVirt VM driver
-                                      +- Docker container driver
-                                      +- Cinder PV driver
-                                      +- Keystone auth driver
-
-if there was a desire to continue running Cinder/Keystone as backends inside
-Kubernetes.
